@@ -23,8 +23,11 @@ Author: Diptarka Roy
 """
 
 import threading
+from dotenv import load_dotenv
 from src.emails import email_checker_loop
 from src.classifier import start_watching
+
+load_dotenv()  # This automatically loads the .env file into your environment!
 
 def main():
     print("🚀 Starting PDF Data Extractor Suite...")
