@@ -11,3 +11,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Ignore credentials and sensitive information
+credentials.json
+token.json
+
+# Ignore logs and temporary files
+downloads/
