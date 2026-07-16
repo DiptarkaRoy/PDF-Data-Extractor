@@ -19,3 +19,4 @@ token.json
 
 # Ignore logs and temporary files
 downloads/
+processed/
