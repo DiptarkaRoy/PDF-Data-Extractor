@@ -34,6 +34,7 @@ import shutil
 import pdfplumber
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from src.extractor import extract_structured_data
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOWNLOADS_DIR = os.path.join(BASE_DIR, "downloads")
@@ -121,21 +122,57 @@ def classify_pdf(file_path):
         return "Supporting Documents"
 
 def process_single_file(file_path):
-    """Classifies and moves a single file."""
+    """Classifies, extracts structured data, and moves a single file safely."""
     filename = os.path.basename(file_path)
     
     if not wait_for_file_to_copy(file_path):
         print(f"Skipping {filename} - File write did not complete.")
         return
 
-    category = classify_pdf(file_path)
-    target_path = os.path.join(PROCESSED_DIR, category, filename)
-    
     try:
+        # 1. Classify (Has internal try-except, but wrapped here for overall safety)
+        category = classify_pdf(file_path)
+        
+        # 2. Extract Data if it's a key document
+        if category in ["Invoices", "Packing_Lists", "Customs_Declarations"]:
+            # Wrap extraction in its own block so extraction failures don't block file routing!
+            try:
+                with pdfplumber.open(file_path) as pdf:
+                    # Join text from the first few pages (or all pages) for the LLM
+                    full_text = "\n".join([page.extract_text() or "" for page in pdf.pages[:3]])
+                
+                print(f"🤖 Extracting structured fields for [{category}]...")
+                extracted_json = extract_structured_data(full_text, category)
+                
+                if extracted_json:
+                    print(f"📥 Extracted Data:\n{extracted_json}")
+                    
+                    # Ensure destination folder exists before writing JSON
+                    json_filename = os.path.splitext(filename)[0] + ".json"
+                    target_json_path = os.path.join(PROCESSED_DIR, category, json_filename)
+                    
+                    with open(target_json_path, "w", encoding="utf-8") as f:
+                        f.write(extracted_json)
+                        
+            except Exception as extraction_err:
+                # Log the API or PDF read error, but let the file move to its folder anyway
+                print(f"⚠️ Data extraction failed for {filename}: {extraction_err}. Continuing with routing.")
+
+        # 3. Handle duplicates and route the original file
+        target_path = os.path.join(PROCESSED_DIR, category, filename)
+        
+        if os.path.exists(target_path):
+            name, ext = os.path.splitext(filename)
+            unique_name = f"{name}_{int(time.time())}{ext}"
+            target_path = os.path.join(PROCESSED_DIR, category, unique_name)
+            print(f"⚠️ Duplicate detected. Renaming '{filename}' ➔ '{unique_name}'")
+        
         shutil.move(file_path, target_path)
-        print(f"⚡ Routed: '{filename}' ➔ [{category}]")
-    except Exception as e:
-        print(f"Failed to move {filename}: {e}")
+        print(f"⚡ Routed: '{os.path.basename(target_path)}' ➔ [{category}]")
+        
+    except Exception as general_err:
+        # This catches critical OS/permission errors (e.g., shutil.move failing)
+        print(f"❌ Critical error processing {filename}: {general_err}")
 
 # --- WATCHDOG EVENT HANDLER ---
 class PDFHandler(FileSystemEventHandler):
