@@ -1,3 +1,32 @@
+"""
+Module: emails.py
+Description: Automated, secure Gmail ingestion engine with built-in attachment 
+             filtering and inbox status management. Connects to the Gmail API 
+             via OAuth 2.0, handles 2FA token lifecycles, and polls for unread 
+             emails to download specific, allowed file types.
+
+Architecture & Workflow:
+    1. Authenticator: Handles OAuth 2.0 authorization, prompting 2FA via browser 
+       on first run and maintaining a persistent session using a local 'token.json'.
+    2. Inbox Poller: Queries Gmail for unread messages containing attachments 
+       using the search filter "has:attachment is:unread".
+    3. Extension Filter: Scans incoming files and only downloads allowed extensions 
+       (PDF, Excel, Word, and ZIP), skipping system noise like image signatures.
+    4. Attachment Downloader: Decodes the base64-encoded file payload from Google 
+       and streams the files directly into the local './downloads' directory.
+    5. Inbox Janitor: Marks successfully processed emails as "Read" (removing the 
+       UNREAD label) to prevent duplicate downloads on subsequent runs.
+    6. Scheduler Loop: Runs a daemonized loop that automatically triggers the sync 
+       cycle at a configurable interval (e.g., every 5 minutes).
+
+Dependencies:
+    - google-api-python-client (Gmail API wrapper)
+    - google-auth-oauthlib (OAuth 2.0 client library)
+    - credentials.json & token.json (Access secrets)
+
+Author: Diptarka Roy
+"""
+
 import os
 import base64
 import time
@@ -62,6 +91,12 @@ def download_attachments():
         for part in parts:
             if part.get('filename'):
                 filename = part['filename']
+                
+                # If the filename doesn't contain a dot, it's an inline signature/system ID.
+                # We can silently skip it without spamming the terminal.
+                if '.' not in filename:
+                    continue
+
                 # Extract the file extension
                 _, file_extension = os.path.splitext(filename.lower())
                 
