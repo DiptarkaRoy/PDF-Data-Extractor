@@ -16,6 +16,7 @@ uv.lock
 # Ignore credentials and sensitive information
 credentials.json
 token.json
+.env
 
 # Ignore logs and temporary files
 downloads/
