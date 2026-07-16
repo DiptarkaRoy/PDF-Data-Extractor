@@ -1,0 +1,19 @@
+{
+  "countries": {
+    "India": {
+      "Invoices": ["gstin", "tax invoice", "bill to", "cgst", "sgst", "invoice date"],
+      "Packing_Lists": ["packing list", "delivery challan", "dispatch list", "gross weight"],
+      "Customs_Declarations": ["shipping bill", "bill of entry", "icegate", "customs duty"]
+    },
+    "USA": {
+      "Invoices": ["ein", "sales tax", "bill to", "invoice total", "remit to"],
+      "Packing_Lists": ["packing slip", "shipped via", "package count", "bol", "bill of lading"],
+      "Customs_Declarations": ["customs declaration", "7501", "entry summary", "hsn code"]
+    },
+    "Global_Default": {
+      "Invoices": ["invoice", "total due", "bill to", "amount paid"],
+      "Packing_Lists": ["packing list", "delivery note", "quantity", "weight"],
+      "Customs_Declarations": ["customs", "declaration", "hs code", "country of origin"]
+    }
+  }
+}
