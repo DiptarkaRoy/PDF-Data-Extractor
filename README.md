@@ -130,7 +130,28 @@ Clone the repository and install required packages:
 uv sync
 ```
 
-### 3. Environment & Credentials Setup
+### 3. Pull Local LLM Model (Required)
+
+Before running extraction, download your preferred local model using Ollama. By default, extractor.py uses llama3.2:
+
+```bash
+# Download the default model (Llama 3.2 3B)
+ollama pull llama3.2
+```
+
+### 4. Environment Setup (.env)
+
+Create a `.env` file in the root directory to configure your local Ollama instance:
+
+```bash
+# Ollama Model & Host Configuration
+OLLAMA_MODEL="llama3.2"
+OLLAMA_HOST="http://localhost:11434"
+
+```
+Note: To switch model without changing python code (e.g. to qwen2.5 or mistral), simply change OLLAMA_MODEL in your .env file.
+
+### 5. Environment & Credentials Setup
 
 1. **Gemini API Key:** Create a `.env` file in the root directory:
    ```env
@@ -138,7 +159,7 @@ uv sync
    ```
 
 2. **Gmail OAuth Credentials:**
-   * Downlaod your Client Secret JSON file from Google Cloud Console.
+   * Download your Client Secret JSON file from Google Cloud Console.
    * Rename it to `credentials.json` and place it in the project root directory.
 
 ---
