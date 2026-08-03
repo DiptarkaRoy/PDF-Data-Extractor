@@ -5,7 +5,6 @@ build/
 dist/
 wheels/
 *.egg-info
-uv.lock
 
 # Ignore the local Python version pin
 .python-version
