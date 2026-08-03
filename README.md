@@ -120,7 +120,6 @@ Document classification rules are fully dynamic. You can specify regional countr
 ### 1. Prerequisites
 * Python 3.10+
 * Google Cloud Platform Project with **Gmail API** enabled
-* Google Gemini API Key
 
 ### 2. Install Dependencies
 
