@@ -45,6 +45,7 @@ def extract_structured_data(
     category: str, 
     model_name: Optional[str] = None
 ) -> Optional[str]:
+    
     """
     Passes raw PDF text to a local LLM model using structured Pydantic schema enforcement.
     """
