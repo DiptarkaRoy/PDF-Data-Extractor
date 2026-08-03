@@ -1,13 +1,11 @@
 """
 Module: extractor.py
-Description: Structured data extraction engine using Google Gemini API.
+Description: Structured data extraction engine using a local LLM via Ollama.
 """
-import os
-import time
-from google import genai
-from google.genai import types
+
+from typing import Optional, Dict, Type
 from pydantic import BaseModel, Field
-from typing import Optional
+import ollama
 
 # --- 1. DEFINE SCHEMAS FOR EACH DOCUMENT TYPE ---
 
@@ -24,53 +22,60 @@ class CustomsDeclarationData(BaseModel):
 class PackingListData(BaseModel):
     po_number: Optional[str] = Field(None, description="The Purchase Order (PO) number reference.")
 
-# --- 2. EXTRACTION RUNNER ---
+# Configuration Mapping: Category -> (Schema, Prompt Instruction)
+CATEGORY_MAPPING: Dict[str, tuple[Type[BaseModel], str]] = {
+    "Invoices": (
+        InvoiceData, 
+        "Extract the Invoice Number, Shipping/Delivery Address, Total Amount, and Currency from this invoice text."
+    ),
+    "Customs_Declarations": (
+        CustomsDeclarationData, 
+        "Extract the Customs Declaration/Bill of Entry Number and the Filing Date from this customs document."
+    ),
+    "Packing_Lists": (
+        PackingListData, 
+        "Extract the Purchase Order (PO) Number from this packing list."
+    )
+}
 
-def extract_structured_data(text: str, category: str, max_retries: int = 3, initial_delay: int = 2):
-    """
-    Passes raw PDF text to Gemini with automatic retries on temporary 503/429 server errors.
-    """
-    if "GEMINI_API_KEY" not in os.environ:
-        raise ValueError("Environment variable 'GEMINI_API_KEY' is missing.")
+# --- 2. LOCAL EXTRACTION RUNNER ---
 
-    if category == "Invoices":
-        schema = InvoiceData
-        prompt = "Extract the Invoice Number, Shipping/Delivery Address, Total Amount, and Currency from this invoice text."
-    elif category == "Customs_Declarations":
-        schema = CustomsDeclarationData
-        prompt = "Extract the Customs Declaration/Bill of Entry Number and the Filing Date from this customs document."
-    elif category == "Packing_Lists":
-        schema = PackingListData
-        prompt = "Extract the Purchase Order (PO) Number from this packing list."
-    else:
+def extract_structured_data(
+    text: str, 
+    category: str, 
+    model_name: str = "llama3.2"  # Or qwen2.5, mistral, etc.
+) -> Optional[str]:
+    """
+    Passes raw PDF text to a local Ollama model using structured Pydantic schema enforcement.
+    """
+    if category not in CATEGORY_MAPPING:
+        print(f"⚠️ Unsupported category: '{category}'")
         return None
 
-    client = genai.Client()
-    delay = initial_delay
+    schema_cls, prompt = CATEGORY_MAPPING[category]
 
-    for attempt in range(max_retries):
-        try:
-            response = client.models.generate_content(
-                model='gemini-3.1-flash-lite',
-                contents=f"{prompt}\n\nDocument Text:\n{text}",
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=schema,
-                    temperature=0.0
-                ),
-            )
-            return response.text
+    try:
+        response = ollama.chat(
+            model=model_name,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a precise data extraction assistant. Extract target values into JSON matching the given schema. Return null or empty strings for missing fields."
+                },
+                {
+                    "role": "user",
+                    "content": f"{prompt}\n\nDocument Text:\n{text}"
+                }
+            ],
+            # Pass the Pydantic schema directly to enforce JSON structure
+            format=schema_cls.model_json_schema(),
+            options={
+                "temperature": 0.0  # Zero temperature for deterministic extraction
+            }
+        )
 
-        except Exception as e:
-            # Check if it's a temporary 503 (Unavailable) or 429 (Rate Limit)
-            error_msg = str(e)
-            is_transient = "503" in error_msg or "UNAVAILABLE" in error_msg or "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg
-            
-            if is_transient and attempt < max_retries - 1:
-                print(f"⚠️ Gemini busy (Attempt {attempt + 1}/{max_retries}). Retrying in {delay}s...")
-                time.sleep(delay)
-                delay *= 2  # Double the wait time for the next try
-            else:
-                # If it's a structural error (400) or we ran out of retries, raise it to fail gracefully
-                print(f"❌ Extraction error for {category} on final attempt: {e}")
-                return None
+        return response.message.content
+
+    except Exception as e:
+        print(f"❌ Local LLM Extraction error for category '{category}': {e}")
+        return None
