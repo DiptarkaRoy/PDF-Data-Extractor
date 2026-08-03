@@ -1,7 +1,7 @@
 [project]
 name = "pdf-data-extractor"
 version = "0.1.0"
-description = "Add your description here"
+description = "An end-to-end, automated document intelligence and processing pipeline."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
