@@ -2,7 +2,7 @@
 Module: extractor.py
 Description: Structured data extraction engine using a local LLM via Ollama.
 """
-
+import os
 from typing import Optional, Dict, Type
 from pydantic import BaseModel, Field
 import ollama
@@ -43,20 +43,23 @@ CATEGORY_MAPPING: Dict[str, tuple[Type[BaseModel], str]] = {
 def extract_structured_data(
     text: str, 
     category: str, 
-    model_name: str = "llama3.2"  # Or qwen2.5, mistral, etc.
+    model_name: Optional[str] = None
 ) -> Optional[str]:
     """
-    Passes raw PDF text to a local Ollama model using structured Pydantic schema enforcement.
+    Passes raw PDF text to a local LLM model using structured Pydantic schema enforcement.
     """
     if category not in CATEGORY_MAPPING:
         print(f"⚠️ Unsupported category: '{category}'")
         return None
+    
+    active_model = model_name or os.getenv("OLLAMA_MODEL", "llama3.2")
+    host_url = os.getenv("OLLAMA_HOST", "http://localhost:11434")    
 
     schema_cls, prompt = CATEGORY_MAPPING[category]
 
     try:
         response = ollama.chat(
-            model=model_name,
+            model=active_model,
             messages=[
                 {
                     "role": "system",
