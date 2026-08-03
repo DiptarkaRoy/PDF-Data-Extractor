@@ -1,6 +1,6 @@
 # PDF Data Extractor Suite 🚀
 
-An end-to-end, automated document intelligence and processing pipeline. The **PDF Data Extractor Suite** periodically ingests email attachments from Gmail via OAuth 2.0, monitors local download directories in real-time, classifies documents using configurable regional keyword rules, extracts structured JSON metadata via the Google Gemini API, and safely routes files into organized processed directories.
+An end-to-end, automated document intelligence and processing pipeline. The PDF Data Extractor Suite periodically ingests email attachments from Gmail via OAuth 2.0, monitors local download directories in real-time, classifies documents using configurable regional keyword rules, extracts structured JSON metadata via a local LLM (Ollama), and safely routes files into organized processed directories.
 
 ---
 
